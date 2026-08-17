@@ -31,7 +31,15 @@ def generate_post_text():
     }
     
     response = requests.post(url, headers=headers, json=data)
-    return response.json()['choices'][0]['message']['content'].strip()
+    response_data = response.json()
+    
+    # ПРОВЕРКА НА ОШИБКИ API
+    if response.status_code != 200 or 'choices' not in response_data:
+        print(f"❌ Ошибка OpenRouter! Статус: {response.status_code}")
+        print(f"Ответ сервера: {response_data}")
+        return "⚠️ Ошибка генерации текста. Проверьте API ключ в настройках GitHub."
+    
+    return response_data['choices'][0]['message']['content'].strip()
 
 def generate_image():
     image_prompt = "modern modular barnhouse, winter landscape, snow, warm cozy light from large panoramic windows, wooden facade, cinematic lighting, photorealistic, 8k"
@@ -53,7 +61,7 @@ def send_to_telegram(text, image_path):
 def main():
     print("Генерация текста...")
     text = generate_post_text()
-    print("Текст готов.")
+    print(f"Текст: {text[:50]}...")
     
     print("Генерация картинки...")
     image_path = generate_image()
@@ -65,7 +73,7 @@ def main():
     if result.get('ok'):
         print("✅ Успешно опубликовано!")
     else:
-        print(f"❌ Ошибка: {result}")
+        print(f"❌ Ошибка Telegram: {result}")
 
 if __name__ == '__main__':
     main()
