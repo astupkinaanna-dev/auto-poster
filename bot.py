@@ -26,3 +26,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+   "model": "meta-llama/llama-3.3-70b-instruct:free",
