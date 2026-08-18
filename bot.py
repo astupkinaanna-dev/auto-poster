@@ -75,4 +75,4 @@ def main():
         print(f"❌ Ошибка Telegram: {result}")
 
 if __name__ == '__main__':
-    main()
+    main()# Обновление секретов
