@@ -1,35 +1,36 @@
-import os
-import requests
+import os, requests
 
-BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
-CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
-OR_KEY = os.getenv('OPENROUTER_API_KEY')
+TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+CHAT = os.getenv('TELEGRAM_CHAT_ID')
+KEY = os.getenv('OPENROUTER_API_KEY')
 
-print(f"TOKEN: {'OK' if BOT_TOKEN else 'EMPTY'}")
-print(f"CHAT_ID: {CHAT_ID}")
-print(f"KEY: {'OK' if OR_KEY else 'EMPTY'}")
+print(f"ПРОВЕРКА: Token={'OK' if TOKEN else 'НЕТ'}, Chat={CHAT}, Key={'OK' if KEY else 'НЕТ'}")
 
-# Генерация текста
-url = "https://openrouter.ai/api/v1/chat/completions"
-headers = {"Authorization": f"Bearer {OR_KEY}", "HTTP-Referer": "https://github.com"}
-data = {
-    "model": "meta-llama/llama-3.3-70b-instruct:free",
-    "messages": [{"role": "user", "content": "Напиши пост для Telegram (600 знаков) о модульных домах зимой. 2-3 эмодзи."}]
-}
-r = requests.post(url, headers=headers, json=data)
+# 1. Генерация текста (используем стабильную бесплатную модель)
+r = requests.post(
+    "https://openrouter.ai/api/v1/chat/completions",
+    headers={"Authorization": f"Bearer {KEY}", "HTTP-Referer": "https://github.com"},
+    json={
+        "model": "meta-llama/llama-3.1-8b-instruct:free",
+        "messages": [{"role": "user", "content": "Короткий пост для Telegram (400 знаков) про преимущества модульных домов KSwooD зимой. Живой стиль, 2 эмодзи, призыв к действию в конце."}]
+    }
+)
 j = r.json()
-text = j["choices"][0]["message"]["content"] if "choices" in j else "Ошибка генерации"
-print(f"Text: {text[:50]}")
+text = j.get("choices", [{}])[0].get("message", {}).get("content", "Ошибка генерации текста")
+print("ТЕКСТ:", text[:60])
 
-# Генерация картинки
-img_url = "https://image.pollinations.ai/prompt/modern%20barnhouse%20winter%20snow?width=1024&height=1024&nologo=true"
-img = requests.get(img_url).content
-with open("img.jpg", "wb") as f:
-    f.write(img)
-print("Image done")
+# 2. Генерация картинки
+img_url = "https://image.pollinations.ai/prompt/modern%20modular%20barnhouse%20winter%20snow%20warm%20light%20panoramic%20windows?width=1024&height=1024&nologo=true"
+img_data = requests.get(img_url).content
+with open("pic.jpg", "wb") as f:
+    f.write(img_data)
+print("КАРТИНКА: OK")
 
-# Отправка в Telegram
-tg_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
-with open("img.jpg", "rb") as f:
-    r = requests.post(tg_url, files={"photo": f}, data={"chat_id": CHAT_ID, "caption": text})
-print(f"Result: {r.json()}")
+# 3. Отправка в Telegram
+res = requests.post(
+    f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
+    files={"photo": open("pic.jpg", "rb")},
+    data={"chat_id": CHAT, "caption": text}
+).json()
+
+print("РЕЗУЛЬТАТ:", "УСПЕХ ✅" if res.get("ok") else res)
