@@ -6,7 +6,18 @@ BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 OR_KEY = os.getenv('OPENROUTER_API_KEY')
 
+# ДИАГНОСТИКА: проверяем, пришли ли секреты
+print("=" * 50)
+print("ПРОВЕРКА ПЕРЕМЕННЫХ:")
+print(f"TELEGRAM_BOT_TOKEN: {'✅ есть' if BOT_TOKEN else '❌ ПУСТОЙ!'}")
+print(f"TELEGRAM_CHAT_ID: {'✅ есть' if CHAT_ID else '❌ ПУСТОЙ!'}")
+print(f"OPENROUTER_API_KEY: {'✅ есть' if OR_KEY else '❌ ПУСТОЙ!'}")
+print("=" * 50)
+
 def generate_post_text():
+    if not OR_KEY:
+        return "⚠️ OPENROUTER_API_KEY не настроен в GitHub Secrets!"
+    
     today = datetime.now().strftime('%d.%m.%Y')
     topics = [
         "Почему модульный дом выгоднее квартиры зимой",
@@ -36,7 +47,7 @@ def generate_post_text():
     if response.status_code != 200 or 'choices' not in response_data:
         print(f"❌ Ошибка OpenRouter! Статус: {response.status_code}")
         print(f"Ответ сервера: {response_data}")
-        return "⚠️ Ошибка генерации текста. Проверьте API ключ в настройках GitHub."
+        return "⚠️ Ошибка генерации текста."
     
     return response_data['choices'][0]['message']['content'].strip()
 
@@ -51,6 +62,10 @@ def generate_image():
     return 'image.jpg'
 
 def send_to_telegram(text, image_path):
+    if not BOT_TOKEN or not CHAT_ID:
+        print("❌ TELEGRAM_BOT_TOKEN или TELEGRAM_CHAT_ID не настроены!")
+        return {'ok': False}
+    
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
     with open(image_path, 'rb') as photo:
         files = {'photo': photo}
@@ -75,4 +90,4 @@ def main():
         print(f"❌ Ошибка Telegram: {result}")
 
 if __name__ == '__main__':
-    main()# Обновление секретов
+    main()
