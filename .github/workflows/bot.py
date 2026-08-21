@@ -140,42 +140,4 @@ img_prompt = image_prompts.get(weekday, "modern modular barnhouse, architectural
 img_url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(img_prompt)}?width=1280&height=720&nologo=true&seed={today.second}"
 
 print("🎨 Генерация картинки...")
-img_data = requests.get(img_url).content
-with open("pic.jpg", "wb") as f:
-    f.write(img_data)
-print(f"✅ КАРТИНКА: OK ({len(img_data)} байт)")
-
-target = OWNER_ID if OWNER_ID else CHAT
-prefix = "📝 Пост на модерацию\n\n" if OWNER_ID else ""
-
-print("📤 Отправка картинки...")
-res_photo = requests.post(
-    f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
-    files={"photo": open("pic.jpg", "rb")},
-    data={"chat_id": target, "caption": f"Иллюстрация к посту на тему: {topic}"}
-).json()
-
-print("📤 Отправка текста...")
-full_text = prefix + text
-if OWNER_ID:
-    full_text += "\n\n—\n💬 Если всё ок — перешлите оба сообщения в канал."
-
-res_text = requests.post(
-    f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-    data={"chat_id": target, "text": full_text, "parse_mode": "Markdown"}
-).json()
-
-if not res_text.get("ok") and "can't parse" in res_text.get("description", "").lower():
-    print("⚠️ Markdown ошибка, отправляем без форматирования")
-    res_text = requests.post(
-        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        data={"chat_id": target, "text": prefix + text}
-    ).json()
-
-print("=" * 50)
-if res_photo.get("ok") and res_text.get("ok"):
-    print("✅ УСПЕХ! Картинка и пост отправлены!")
-else:
-    print(f"❌ ОШИБКА:")
-    print(f"  Фото: {res_photo}")
-    print(f"  Текст: {res_text}")
+img_data = requests.get(img_url
