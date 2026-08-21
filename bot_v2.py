@@ -8,7 +8,6 @@ OWNER_ID = os.getenv('OWNER_ID')
 
 print(f"ПРОВЕРКА: Token={'OK' if TOKEN else 'НЕТ'}, Chat={'OK' if CHAT else 'НЕТ'}, Groq={'OK' if GROQ_KEY else 'НЕТ'}, Owner={'OK' if OWNER_ID else 'НЕТ'}")
 
-# Темы по дням недели
 topics = {
     0: "Технология ППУ-утепления в модульных домах: почему это лучше минваты и бруса",
     1: "Как панорамные окна сохраняют тепло зимой: мифы и реальность",
@@ -24,7 +23,6 @@ weekday = today.weekday()
 topic = topics[weekday]
 date_str = today.strftime('%d.%m.%Y')
 
-# ========== ЭТАП 1: Генерация подробного плана ==========
 plan_prompt = f"""Ты — главный архитектор компании KSwooD (модульные дома и бани для круглогодичного проживания).
 
 Сегодня {date_str}. Составь ПОДРОБНЫЙ план экспертной статьи на тему: «{topic}»
@@ -37,7 +35,7 @@ plan_prompt = f"""Ты — главный архитектор компании 
 5. Сравнительная таблица или список «было/стало»
 6. Тёплый вывод с мягким призывом
 
-ФАКТЫ О KSwooD (используй в плане):
+ФАКТЫ О KSwooD:
 - Утепление ППУ — в 2 раза эффективнее минваты, служит 50+ лет
 - Каркас из сухой строганной доски камерной сушки (влажность 12%)
 - Панорамные энергосберегающие стеклопакеты с аргоном
@@ -49,7 +47,6 @@ plan_prompt = f"""Ты — главный архитектор компании 
 
 Напиши только план, без самого текста."""
 
-# ========== ЭТАП 2: Разворачиваем план в длинный пост ==========
 def make_full_post(plan):
     post_prompt = f"""Ты — главный архитектор и контент-директор KSwooD.
 
@@ -65,18 +62,16 @@ def make_full_post(plan):
 - Добавь живые детали: «семья Ивановых из Казани», «экономия 47 000 ₽ в год»
 - Пиши подзаголовки жирным (через **)
 - Используй списки с эмодзи (✅, 📊, 💡, 🔥)
-- Стиль: экспертный, но тёплый. Как архитектор с другом за кофе
+- Стиль: экспертный, но тёплый
 
 ЗАПРЕЩЕНО:
 - Писать коротко и общими фразами
-- Канцеляризмы: «является», «осуществляется», «в целях»
-- Клише: «лидеры рынка», «индивидуальный подход»
-- Хештеги
+- Канцеляризмы, клише, хештеги
 - Обращения «друзья», «подписчики»
 
 Призыв в конце: мягкий, «напишите — рассчитаем за 15 минут».
 
-Напиши ВЕСЬ пост целиком, без пояснений и комментариев."""
+Напиши ВЕСЬ пост целиком, без пояснений."""
 
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"}
@@ -92,7 +87,6 @@ def make_full_post(plan):
         return j["choices"][0]["message"]["content"].strip()
     return None
 
-# ========== ГЕНЕРАЦИЯ ==========
 url = "https://api.groq.com/openai/v1/chat/completions"
 headers = {"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"}
 
@@ -124,7 +118,6 @@ else:
 if not text:
     text = "🏡 Модульные дома KSwooD — тепло, стиль и свобода. Напишите нам для расчёта."
 
-# ========== ГЕНЕРАЦИЯ КАРТИНКИ (через FLUX — качественная модель) ==========
 image_prompts = {
     0: "technical cross-section of modern modular house wall showing thick polyurethane foam insulation layers between wooden frame, detailed architectural diagram, warm natural light, professional 3d render, 8k, photorealistic",
     1: "stunning modern barnhouse with floor-to-ceiling panoramic windows in snowy winter landscape, warm golden light glowing from inside, frost on window edges, cinematic photography, golden hour, architectural digest style, 8k",
@@ -136,7 +129,6 @@ image_prompts = {
 }
 
 img_prompt = image_prompts.get(weekday, "modern modular barnhouse, architectural photography, cinematic, 8k")
-# Используем модель FLUX — она даёт гораздо лучшее качество
 img_url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(img_prompt)}?width=1280&height=720&model=flux&nologo=true&seed={today.second}"
 
 print("🎨 Генерация картинки через FLUX...")
@@ -145,11 +137,9 @@ with open("pic.jpg", "wb") as f:
     f.write(img_data)
 print(f"✅ КАРТИНКА: OK ({len(img_data)} байт)")
 
-# ========== ОТПРАВКА В TELEGRAM (раздельно: картинка + текст) ==========
 target = OWNER_ID if OWNER_ID else CHAT
 prefix = "📝 **Пост на модерацию**\n\n" if OWNER_ID else ""
 
-# 1. Сначала отправляем картинку
 print("📤 Отправка картинки...")
 res_photo = requests.post(
     f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
@@ -157,7 +147,6 @@ res_photo = requests.post(
     data={"chat_id": target, "caption": f"🎨 Иллюстрация к посту на тему: {topic}"}
 ).json()
 
-# 2. Потом отправляем текст отдельным сообщением (без лимита в 1024 символа!)
 print("📤 Отправка текста...")
 full_text = prefix + text
 if OWNER_ID:
@@ -168,7 +157,6 @@ res_text = requests.post(
     data={"chat_id": target, "text": full_text, "parse_mode": "Markdown"}
 ).json()
 
-# Если Markdown упал (Telegram капризный к форматированию) — отправляем как обычный текст
 if not res_text.get("ok") and "can't parse" in res_text.get("description", "").lower():
     print("⚠️ Markdown ошибка, отправляем без форматирования")
     res_text = requests.post(
