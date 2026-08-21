@@ -4,8 +4,9 @@ from datetime import datetime
 TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 CHAT = os.getenv('TELEGRAM_CHAT_ID')
 GROQ_KEY = os.getenv('GROQ_API_KEY')
+OWNER_ID = os.getenv('OWNER_ID')
 
-print(f"ПРОВЕРКА: Token={'OK' if TOKEN else 'НЕТ'}, Chat={'OK' if CHAT else 'НЕТ'}, Groq={'OK' if GROQ_KEY else 'НЕТ'}")
+print(f"ПРОВЕРКА: Token={'OK' if TOKEN else 'НЕТ'}, Chat={'OK' if CHAT else 'НЕТ'}, Groq={'OK' if GROQ_KEY else 'НЕТ'}, Owner={'OK' if OWNER_ID else 'НЕТ'}")
 
 # Темы по дням недели
 topics = {
@@ -23,80 +24,87 @@ weekday = today.weekday()
 topic = topics[weekday]
 date_str = today.strftime('%d.%m.%Y')
 
-prompt = f"""Ты — главный архитектор компании KSwooD (модульные дома и бани для круглогодичного проживания).
+# ========== ЭТАП 1: Генерация подробного плана ==========
+plan_prompt = f"""Ты — главный архитектор компании KSwooD (модульные дома и бани для круглогодичного проживания).
 
-Сегодня {date_str}. Напиши экспертный пост для Telegram на тему: «{topic}»
+Сегодня {date_str}. Составь ПОДРОБНЫЙ план экспертной статьи на тему: «{topic}»
 
-ТРЕБОВАНИЯ:
-- Объём: 1800-2500 знаков
-- Структура: цепляющий заголовок (жирным), вступление-крючок, 3-5 пунктов с цифрами и фактами, личный кейс KSwooD, тёплый вывод, мягкий призыв
-- Стиль: экспертный, но живой. Как архитектор с другом за кофе
-- Конкретика: цифры, сроки, сравнения («в 2 раза теплее», «экономия 40 000 ₽/год»)
-- 3-5 эмодзи умеренно
-- Без канцеляризмов, клише, хештегов
-- Обращений «друзья», «подписчики» — избегать
+План должен включать:
+1. Цепляющий заголовок (с цифрой или вопросом)
+2. Вступление-крючок (какая боль/миф клиента)
+3. 5-6 основных разделов с подзаголовками (каждый — с конкретной цифрой/фактом)
+4. Реалистичный кейс клиента KSwooD (имя, ситуация, результат в цифрах)
+5. Сравнительная таблица или список «было/стало»
+6. Тёплый вывод с мягким призывом
 
-ФАКТЫ О KSwooD:
-- Утепление ППУ — в 2 раза эффективнее минваты
-- Каркас из сухой строганной доски
-- Панорамные энергосберегающие стеклопакеты
-- Монтаж 14-30 дней
+ФАКТЫ О KSwooD (используй в плане):
+- Утепление ППУ — в 2 раза эффективнее минваты, служит 50+ лет
+- Каркас из сухой строганной доски камерной сушки (влажность 12%)
+- Панорамные энергосберегающие стеклопакеты с аргоном
+- Монтаж 14-30 дней под ключ
 - Круглогодичное проживание: -40°C снаружи, +22°C внутри
 - Коммуналка дома 35 м² — ~4000 ₽/мес
 - Собственное производство в России
+- Гарантия 5 лет на конструктив
 
-Призыв в конце: мягкий, не «купите», а «напишите — рассчитаем за 15 минут» или «приезжайте на выставочный дом».
+Напиши только план, без самого текста."""
 
-Напиши пост целиком, без лишних комментариев и пояснений. Только сам текст поста."""
+# ========== ЭТАП 2: Разворачиваем план в длинный пост ==========
+def make_full_post(plan):
+    post_prompt = f"""Ты — главный архитектор и контент-директор KSwooD.
 
-# Генерация текста через Groq
+Вот план статьи:
+{plan}
+
+Напиши ПОЛНЫЙ ТЕКСТ ПОСТА по этому плану.
+
+КРИТИЧЕСКИ ВАЖНО:
+- ОБЪЁМ: МИНИМУМ 3500-4500 знаков (это примерно 500-700 слов)
+- Каждый раздел плана разворачивай в 2-3 абзаца с конкретикой
+- Используй цифры, сравнения, сроки, цены
+- Добавь живые детали: «семья Ивановых из Казани», «экономия 47 000 ₽ в год»
+- Пиши подзаголовки жирным (через **)
+- Используй списки с эмодзи (✅, 📊, 💡, 🔥)
+- Стиль: экспертный, но тёплый. Как архитектор с другом за кофе
+
+ЗАПРЕЩЕНО:
+- Писать коротко и общими фразами
+- Канцеляризмы: «является», «осуществляется», «в целях»
+- Клише: «лидеры рынка», «индивидуальный подход»
+- Хештеги
+- Обращения «друзья», «подписчики»
+
+Призыв в конце: мягкий, «напишите — рассчитаем за 15 минут».
+
+Напиши ВЕСЬ пост целиком, без пояснений и комментариев."""
+
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"}
+    data = {
+        "model": "llama-3.3-70b-versatile",
+        "messages": [{"role": "user", "content": post_prompt}],
+        "temperature": 0.7,
+        "max_tokens": 4000
+    }
+    r = requests.post(url, headers=headers, json=data)
+    j = r.json()
+    if r.status_code == 200 and "choices" in j:
+        return j["choices"][0]["message"]["content"].strip()
+    return None
+
+# ========== ГЕНЕРАЦИЯ ==========
 url = "https://api.groq.com/openai/v1/chat/completions"
-headers = {
-    "Authorization": f"Bearer {GROQ_KEY}",
-    "Content-Type": "application/json"
-}
-data = {
+headers = {"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"}
+
+print("📋 Этап 1: Генерация плана...")
+plan_data = {
     "model": "llama-3.3-70b-versatile",
-    "messages": [{"role": "user", "content": prompt}],
+    "messages": [{"role": "user", "content": plan_prompt}],
     "temperature": 0.7,
-    "max_tokens": 2000
+    "max_tokens": 1500
 }
+r1 = requests.post(url, headers=headers, json=plan_data)
+j1 = r1.json()
 
-print("Отправляем запрос в Groq...")
-r = requests.post(url, headers=headers, json=data)
-j = r.json()
-
-if r.status_code == 200 and "choices" in j:
-    text = j["choices"][0]["message"]["content"].strip()
-    print(f"✅ ТЕКСТ ПОЛУЧЕН: {len(text)} знаков")
-    print(f"ПРЕВЬЮ: {text[:100]}...")
-else:
-    print(f"❌ ОШИБКА GROQ: {j}")
-    text = "🏡 Модульные дома KSwooD — тепло, стиль и свобода. Напишите нам для расчёта."
-
-# Генерация картинки под тему дня
-image_prompts = {
-    0: "cross section modern house wall thick insulation technical drawing warm tones",
-    1: "modern barnhouse huge panoramic windows winter warm light inside snow outside cinematic",
-    2: "spacious wooden terrace modular house cozy furniture summer evening warm lights nature",
-    3: "beautiful natural wood texture dry timber warm tones architectural detail",
-    4: "split comparison dark city apartment window vs bright modular house forest view",
-    5: "beautiful forest plot land sun rays morning light nature photography",
-    6: "happy family near modern modular barnhouse warm evening light natural lifestyle"
-}
-
-img_prompt = image_prompts.get(weekday, "modern modular barnhouse architectural photography")
-img_url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(img_prompt)}?width=1024&height=1024&nologo=true&seed={today.second}"
-img_data = requests.get(img_url).content
-with open("pic.jpg", "wb") as f:
-    f.write(img_data)
-print("КАРТИНКА: OK ✅")
-
-# Отправка в Telegram
-res = requests.post(
-    f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
-    files={"photo": open("pic.jpg", "rb")},
-    data={"chat_id": CHAT, "caption": text}
-).json()
-
-print("РЕЗУЛЬТАТ:", "УСПЕХ ✅" if res.get("ok") else res)
+if r1.status_code == 200 and "choices" in j1:
+   
