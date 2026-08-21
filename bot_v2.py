@@ -3,19 +3,20 @@ from datetime import datetime
 
 TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 CHAT = os.getenv('TELEGRAM_CHAT_ID')
-KEY = os.getenv('OPENROUTER_API_KEY')
+GROQ_KEY = os.getenv('GROQ_API_KEY')
+OWNER_ID = os.getenv('OWNER_ID')
 
-print(f"ПРОВЕРКА: Token={'OK' if TOKEN else 'НЕТ'}, Chat={'OK' if CHAT else 'НЕТ'}, Key={'OK' if KEY else 'НЕТ'}")
+print(f"ПРОВЕРКА: Token={'OK' if TOKEN else 'НЕТ'}, Chat={'OK' if CHAT else 'НЕТ'}, Groq={'OK' if GROQ_KEY else 'НЕТ'}, Owner={'OK' if OWNER_ID else 'НЕТ'}")
 
-# Темы по дням недели для разнообразия
+# Темы по дням недели
 topics = {
     0: "Технология ППУ-утепления в модульных домах: почему это лучше минваты и бруса",
     1: "Как панорамные окна сохраняют тепло зимой: мифы и реальность",
     2: "Терраса в модульном доме: как мы увеличиваем полезную площадь в 2 раза",
-    3: "Сухая строганная доска vs обычный брус: честное сравнение для будущего владельца",
+    3: "Сухая строганная доска vs обычный брус: честное сравнение",
     4: "Модульный дом vs квартира-студия 35 м²: финансовый разбор за 10 лет",
     5: "Как выбрать участок для модульного дома: 5 критических ошибок",
-    6: "История клиента: как семья переехала из городской квартиры в свой дом за 30 дней"
+    6: "История клиента: переезд из городской квартиры в свой дом за 30 дней"
 }
 
 today = datetime.now()
@@ -23,105 +24,162 @@ weekday = today.weekday()
 topic = topics[weekday]
 date_str = today.strftime('%d.%m.%Y')
 
-# Детальный промпт в стиле KSwooD
-prompt = f"""Ты — главный архитектор и контент-директор компании KSwooD. Мы строим премиальные модульные дома и бани для круглогодичного проживания.
+# ========== ЭТАП 1: Генерация подробного плана ==========
+plan_prompt = f"""Ты — главный архитектор компании KSwooD (модульные дома и бани для круглогодичного проживания).
 
-Сегодня {date_str}. Напиши экспертный пост для Telegram-канала на тему:
-«{topic}»
+Сегодня {date_str}. Составь ПОДРОБНЫЙ план экспертной статьи на тему: «{topic}»
 
-СТРОГИЕ ТРЕБОВАНИЯ К ТЕКСТУ:
+План должен включать:
+1. Цепляющий заголовок (с цифрой или вопросом)
+2. Вступление-крючок (какая боль/миф клиента)
+3. 5-6 основных разделов с подзаголовками (каждый — с конкретной цифрой/фактом)
+4. Реалистичный кейс клиента KSwooD (имя, ситуация, результат в цифрах)
+5. Сравнительная таблица или список «было/стало»
+6. Тёплый вывод с мягким призывом
 
-1. ОБЪЁМ: 1800-2500 знаков. Это не короткая заметка, а полноценный экспертный материал.
+ФАКТЫ О KSwooD (используй в плане):
+- Утепление ППУ — в 2 раза эффективнее минваты, служит 50+ лет
+- Каркас из сухой строганной доски камерной сушки (влажность 12%)
+- Панорамные энергосберегающие стеклопакеты с аргоном
+- Монтаж 14-30 дней под ключ
+- Круглогодичное проживание: -40°C снаружи, +22°C внутри
+- Коммуналка дома 35 м² — ~4000 ₽/мес
+- Собственное производство в России
+- Гарантия 5 лет на конструктив
 
-2. СТРУКТУРА (обязательна):
-   - Цепляющий заголовок (жирным, без эмодзи в заголовке)
-   - Вступление-крючок (1-2 предложения, которые цепляют боль или миф клиента)
-   - Основная часть: 3-5 конкретных пунктов с цифрами, фактами, сравнениями
-   - Личный опыт или кейс KSwooD (можно выдумать правдоподобный)
-   - Финал: тёплый, человечный вывод + мягкий призыв к действию
+Напиши только план, без самого текста."""
 
-3. СТИЛЬ И ТОН:
-   - Экспертный, но тёплый. Как будто архитектор разговаривает с другом за кофе
-   - Конкретика: цифры, сроки, цены, сравнения («в 2 раза теплее», «экономия 40 000 ₽ в год»)
-   - Без канцеляризмов: никаких «является», «осуществляется», «в целях»
-   - Без воды и общих фраз вроде «комфорт и уют»
-   - Живые метафоры и образы
-   - 3-5 уместных эмодзи (НЕ в каждом предложении!)
+# ========== ЭТАП 2: Разворачиваем план в длинный пост ==========
+def make_full_post(plan):
+    post_prompt = f"""Ты — главный архитектор и контент-директор KSwooD.
 
-4. ФАКТЫ О KSwooD (используй в тексте):
-   - Утепление ППУ (пенополиуретан) — в 2 раза эффективнее минваты
-   - Каркас из сухой строганной доски камерной сушки
-   - Панорамные энергосберегающие стеклопакеты
-   - Срок монтажа: 14-30 дней
-   - Круглогодичное проживание при -40°C снаружи, +22°C внутри
-   - Коммуналка дома 35 м² — около 4000 ₽/мес
-   - Собственное производство в России
+Вот план статьи:
+{plan}
 
-5. ПРИЗЫВ К ДЕЙСТВИЮ (в конце, мягкий):
-   - Не «купите сейчас!»
-   - А что-то вроде: «Напишите нам — рассчитаем стоимость вашего проекта за 15 минут» или «Приезжайте на выставочный дом — покажем всё вживую»
+Напиши ПОЛНЫЙ ТЕКСТ ПОСТА по этому плану.
 
-6. ЗАПРЕЩЕНО:
-   - Хештеги в тексте
-   - Восклицательные знаки чаще 2 раз
-   - Клише: «лидеры рынка», «индивидуальный подход», «широкий спектр»
-   - Обращения «дорогие подписчики», «друзья»
+КРИТИЧЕСКИ ВАЖНО:
+- ОБЪЁМ: МИНИМУМ 3500-4500 знаков (это примерно 500-700 слов)
+- Каждый раздел плана разворачивай в 2-3 абзаца с конкретикой
+- Используй цифры, сравнения, сроки, цены
+- Добавь живые детали: «семья Ивановых из Казани», «экономия 47 000 ₽ в год»
+- Пиши подзаголовки жирным (через **)
+- Используй списки с эмодзи (✅, 📊, 💡, 🔥)
+- Стиль: экспертный, но тёплый. Как архитектор с другом за кофе
 
-Напиши пост так, чтобы читатель захотел сохранить его и переслать другу."""
+ЗАПРЕЩЕНО:
+- Писать коротко и общими фразами
+- Канцеляризмы: «является», «осуществляется», «в целях»
+- Клише: «лидеры рынка», «индивидуальный подход»
+- Хештеги
+- Обращения «друзья», «подписчики»
 
-# 1. Генерация текста
-url = "https://openrouter.ai/api/v1/chat/completions"
-headers = {
-    "Authorization": f"Bearer {KEY}",
-    "HTTP-Referer": "https://github.com",
-    "X-Title": "KSwooD Expert Bot"
-}
+Призыв в конце: мягкий, «напишите — рассчитаем за 15 минут».
 
-# Используем самую сильную бесплатную модель
-models = [
-    "meta-llama/llama-3.3-70b-instruct:free",
-    "google/gemma-3-27b-it:free",
-    "meta-llama/llama-3.1-8b-instruct:free"
-]
+Напиши ВЕСЬ пост целиком, без пояснений и комментариев."""
 
-text = None
-for model in models:
-    print(f"Пробуем модель: {model}")
-    data = {"model": model, "messages": [{"role": "user", "content": prompt}]}
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"}
+    data = {
+        "model": "llama-3.3-70b-versatile",
+        "messages": [{"role": "user", "content": post_prompt}],
+        "temperature": 0.7,
+        "max_tokens": 4000
+    }
     r = requests.post(url, headers=headers, json=data)
     j = r.json()
     if r.status_code == 200 and "choices" in j:
-        text = j["choices"][0]["message"]["content"].strip()
-        print(f"✅ Текст сгенерирован ({len(text)} знаков)")
-        break
-    print(f"⚠️ {model} не подошла")
+        return j["choices"][0]["message"]["content"].strip()
+    return None
+
+# ========== ГЕНЕРАЦИЯ ==========
+url = "https://api.groq.com/openai/v1/chat/completions"
+headers = {"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"}
+
+print("📋 Этап 1: Генерация плана...")
+plan_data = {
+    "model": "llama-3.3-70b-versatile",
+    "messages": [{"role": "user", "content": plan_prompt}],
+    "temperature": 0.7,
+    "max_tokens": 1500
+}
+r1 = requests.post(url, headers=headers, json=plan_data)
+j1 = r1.json()
+
+if r1.status_code == 200 and "choices" in j1:
+    plan = j1["choices"][0]["message"]["content"].strip()
+    print(f"✅ План готов: {len(plan)} знаков")
+    
+    print("📝 Этап 2: Разворачиваем в полный пост...")
+    text = make_full_post(plan)
+    if text:
+        print(f"✅ ПОСТ ГОТОВ: {len(text)} знаков")
+    else:
+        print("❌ Ошибка на этапе 2")
+        text = None
+else:
+    print(f"❌ ОШИБКА на этапе 1: {j1}")
+    text = None
 
 if not text:
     text = "🏡 Модульные дома KSwooD — тепло, стиль и свобода. Напишите нам для расчёта."
 
-# 2. Генерация картинки (промпт под тему дня)
+# ========== ГЕНЕРАЦИЯ КАРТИНКИ (через FLUX — качественная модель) ==========
 image_prompts = {
-    0: "cross section of modern modular house wall showing thick polyurethane insulation layers, technical architectural drawing, warm tones, professional",
-    1: "modern barnhouse with huge panoramic windows in winter, warm golden light inside, snow outside, cinematic, photorealistic",
-    2: "spacious wooden terrace of modular house with cozy outdoor furniture, summer evening, warm string lights, nature view",
-    3: "beautiful natural wood texture close-up, dry planed timber, warm tones, architectural detail, professional photography",
-    4: "split comparison: left side dark city apartment window view, right side bright modular house with forest view, cinematic",
-    5: "beautiful forest plot of land with sun rays, perfect for house construction, morning light, nature photography",
-    6: "happy family near modern modular barnhouse, warm evening light, natural lifestyle, cinematic photography"
+    0: "technical cross-section of modern modular house wall showing thick polyurethane foam insulation layers between wooden frame, detailed architectural diagram, warm natural light, professional 3d render, 8k, photorealistic",
+    1: "stunning modern barnhouse with floor-to-ceiling panoramic windows in snowy winter landscape, warm golden light glowing from inside, frost on window edges, cinematic photography, golden hour, architectural digest style, 8k",
+    2: "spacious wooden deck terrace attached to modern modular barnhouse, cozy outdoor lounge with plush sofa and coffee table, warm string lights, summer evening sunset, lush green forest in background, lifestyle photography, 8k",
+    3: "extreme close-up of beautiful natural wood texture, dry planed timber with visible grain, warm honey tones, shallow depth of field, professional product photography, studio lighting, 8k",
+    4: "dramatic split-screen comparison: left side dark cramped city apartment with gray view of buildings, right side bright airy modular barnhouse with panoramic forest view, cinematic contrast, 8k",
+    5: "beautiful forest plot of land with morning sun rays streaming through trees, perfect flat terrain for house construction, dew on grass, magical atmosphere, landscape photography, 8k",
+    6: "happy young family with children standing in front of their new modern modular barnhouse, warm evening golden hour light, natural lifestyle photography, genuine smiles, cinematic, 8k"
 }
 
-img_prompt = image_prompts.get(weekday, "modern modular barnhouse, architectural photography, cinematic")
-img_url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(img_prompt)}?width=1024&height=1024&nologo=true&seed={today.second}"
+img_prompt = image_prompts.get(weekday, "modern modular barnhouse, architectural photography, cinematic, 8k")
+# Используем модель FLUX — она даёт гораздо лучшее качество
+img_url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(img_prompt)}?width=1280&height=720&model=flux&nologo=true&seed={today.second}"
+
+print("🎨 Генерация картинки через FLUX...")
 img_data = requests.get(img_url).content
 with open("pic.jpg", "wb") as f:
     f.write(img_data)
-print("КАРТИНКА: OK ✅")
+print(f"✅ КАРТИНКА: OK ({len(img_data)} байт)")
 
-# 3. Отправка в Telegram
-res = requests.post(
+# ========== ОТПРАВКА В TELEGRAM (раздельно: картинка + текст) ==========
+target = OWNER_ID if OWNER_ID else CHAT
+prefix = "📝 **Пост на модерацию**\n\n" if OWNER_ID else ""
+
+# 1. Сначала отправляем картинку
+print("📤 Отправка картинки...")
+res_photo = requests.post(
     f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
     files={"photo": open("pic.jpg", "rb")},
-    data={"chat_id": CHAT, "caption": text, "parse_mode": "HTML"}
+    data={"chat_id": target, "caption": f"🎨 Иллюстрация к посту на тему: {topic}"}
 ).json()
 
-print("РЕЗУЛЬТАТ:", "УСПЕХ ✅" if res.get("ok") else res)
+# 2. Потом отправляем текст отдельным сообщением (без лимита в 1024 символа!)
+print("📤 Отправка текста...")
+full_text = prefix + text
+if OWNER_ID:
+    full_text += "\n\n—\n💬 Если всё ок — перешлите оба сообщения в канал."
+
+res_text = requests.post(
+    f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+    data={"chat_id": target, "text": full_text, "parse_mode": "Markdown"}
+).json()
+
+# Если Markdown упал (Telegram капризный к форматированию) — отправляем как обычный текст
+if not res_text.get("ok") and "can't parse" in res_text.get("description", "").lower():
+    print("⚠️ Markdown ошибка, отправляем без форматирования")
+    res_text = requests.post(
+        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+        data={"chat_id": target, "text": prefix + text}
+    ).json()
+
+print("=" * 50)
+if res_photo.get("ok") and res_text.get("ok"):
+    print("✅ УСПЕХ! Картинка и пост отправлены!")
+else:
+    print(f"❌ ОШИБКА:")
+    print(f"  Фото: {res_photo}")
+    print(f"  Текст: {res_text}")
