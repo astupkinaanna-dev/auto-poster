@@ -76,7 +76,7 @@ def make_full_post(plan):
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"}
     data = {
-        "model": "llama-3.3-70b-versatile",
+        "model": "llama-3.1-70b-versatile",
         "messages": [{"role": "user", "content": post_prompt}],
         "temperature": 0.7,
         "max_tokens": 4000
@@ -92,7 +92,7 @@ headers = {"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/j
 
 print("📋 Этап 1: Генерация плана...")
 plan_data = {
-    "model": "llama-3.3-70b-versatile",
+    "model": "llama-3.1-70b-versatile",
     "messages": [{"role": "user", "content": plan_prompt}],
     "temperature": 0.7,
     "max_tokens": 1500
@@ -119,23 +119,32 @@ if not text:
     text = "🏡 Модульные дома KSwooD — тепло, стиль и свобода. Напишите нам для расчёта."
 
 image_prompts = {
-    0: "technical cross-section of modern modular house wall showing thick polyurethane foam insulation layers between wooden frame, detailed architectural diagram, warm natural light, professional 3d render, 8k, photorealistic",
-    1: "stunning modern barnhouse with floor-to-ceiling panoramic windows in snowy winter landscape, warm golden light glowing from inside, frost on window edges, cinematic photography, golden hour, architectural digest style, 8k",
-    2: "spacious wooden deck terrace attached to modern modular barnhouse, cozy outdoor lounge with plush sofa and coffee table, warm string lights, summer evening sunset, lush green forest in background, lifestyle photography, 8k",
-    3: "extreme close-up of beautiful natural wood texture, dry planed timber with visible grain, warm honey tones, shallow depth of field, professional product photography, studio lighting, 8k",
-    4: "dramatic split-screen comparison: left side dark cramped city apartment with gray view of buildings, right side bright airy modular barnhouse with panoramic forest view, cinematic contrast, 8k",
-    5: "beautiful forest plot of land with morning sun rays streaming through trees, perfect flat terrain for house construction, dew on grass, magical atmosphere, landscape photography, 8k",
-    6: "happy young family with children standing in front of their new modern modular barnhouse, warm evening golden hour light, natural lifestyle photography, genuine smiles, cinematic, 8k"
+    0: "technical cross-section architectural diagram of modern modular house wall showing thick polyurethane foam insulation layers between wooden frame structure, detailed cutaway view, warm natural lighting, professional 3d render, high quality, 8k resolution",
+    1: "stunning modern barnhouse with floor-to-ceiling panoramic windows in snowy winter landscape, warm golden light glowing from inside, frost on window edges, cozy atmosphere, cinematic photography, golden hour lighting, architectural digest style, professional quality, 8k",
+    2: "spacious wooden deck terrace attached to modern modular barnhouse, cozy outdoor lounge area with plush sofa and coffee table, warm string lights, summer evening sunset, lush green forest in background, lifestyle photography, high quality, 8k",
+    3: "extreme close-up of beautiful natural wood texture, dry planed timber with visible grain patterns, warm honey tones, shallow depth of field, professional product photography, studio lighting, high detail, 8k",
+    4: "dramatic split-screen comparison: left side dark cramped city apartment with gray view of buildings, right side bright airy modular barnhouse with panoramic forest view, cinematic contrast, professional quality, 8k",
+    5: "beautiful forest plot of land with morning sun rays streaming through trees, perfect flat terrain for house construction, dew on grass, magical atmosphere, landscape photography, high quality, 8k",
+    6: "happy young family with children standing in front of their new modern modular barnhouse, warm evening golden hour light, natural lifestyle photography, genuine smiles, cinematic quality, 8k"
 }
 
-img_prompt = image_prompts.get(weekday, "modern modular barnhouse, architectural photography, cinematic, 8k")
-img_url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(img_prompt)}?width=1280&height=720&model=flux&nologo=true&seed={today.second}"
+img_prompt = image_prompts.get(weekday, "modern modular barnhouse, architectural photography, cinematic quality, 8k")
+img_url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(img_prompt)}?width=1280&height=720&nologo=true&seed={today.second}"
 
-print("🎨 Генерация картинки через FLUX...")
+print("🎨 Генерация картинки...")
 img_data = requests.get(img_url).content
 with open("pic.jpg", "wb") as f:
     f.write(img_data)
 print(f"✅ КАРТИНКА: OK ({len(img_data)} байт)")
+
+if len(img_data) < 50000:
+    print("⚠️ Картинка маленькая, пробуем альтернативный URL...")
+    img_url2 = f"https://image.pollinations.ai/prompt/{requests.utils.quote(img_prompt)}?width=1024&height=1024&nologo=true&seed={today.minute}"
+    img_data2 = requests.get(img_url2).content
+    if len(img_data2) > len(img_data):
+        with open("pic.jpg", "wb") as f:
+            f.write(img_data2)
+        print(f"✅ Картинка перезаписана: {len(img_data2)} байт")
 
 target = OWNER_ID if OWNER_ID else CHAT
 prefix = "📝 **Пост на модерацию**\n\n" if OWNER_ID else ""
